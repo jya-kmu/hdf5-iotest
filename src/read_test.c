@@ -14,6 +14,7 @@
 #include "read_test.h"
 
 #include "dataset.h"
+#include "config.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -36,6 +37,7 @@ void read_test
  double* read_time
  )
 {
+  herr_t status;
   unsigned int step_first_flg, strong_scaling_flg;
   unsigned int istep, iarray;
   double *rbuf;
@@ -66,7 +68,8 @@ void read_test
     dims[0] = (hsize_t)my_rows;
     dims[1] = (hsize_t)my_cols;
     mspace = H5Screate_simple(2, dims, dims);
-    assert(H5Sselect_all(mspace) >= 0);
+    status = H5Sselect_all(mspace);
+    assert(status >= 0);
   }
 
 #ifdef VERIFY_DATA
@@ -88,22 +91,26 @@ void read_test
     {
     case 4:
       {
-        assert((dset = H5Dopen(file, "dataset", dapl)) >= 0);
+        dset = H5Dopen(file, "dataset", dapl);
+        assert(dset >= 0);
 
         for (istep = 0; istep < pconfig->steps; ++istep)
           {
             for (iarray = 0; iarray < pconfig->arrays; ++iarray)
               {
-                assert((fspace = H5Dget_space(dset)) >= 0);
+                fspace = H5Dget_space(dset);
+                assert(fspace >= 0);
                 *create_time -= MPI_Wtime();
                 create_selection(pconfig, fspace, my_proc_row, my_proc_col,
                                  istep, iarray);
                 *create_time += MPI_Wtime();
                 *read_time -= MPI_Wtime();
-                assert(H5Dread(dset, H5T_NATIVE_DOUBLE, mspace, fspace, dxpl,
-                               rbuf) >= 0);
+                status = H5Dread(dset, H5T_NATIVE_DOUBLE, mspace, fspace, dxpl,
+                                 rbuf);
+                assert(status >= 0);
                 *read_time += MPI_Wtime();
-                assert(H5Sclose(fspace) >= 0);
+                status = H5Sclose(fspace);
+                assert(status >= 0);
 
 #ifdef VERIFY_DATA
                 d[0] = step_first_flg ? pconfig->steps : pconfig->arrays;
@@ -115,7 +122,8 @@ void read_test
               }
           }
 
-        assert(H5Dclose(dset) >= 0);
+        status = H5Dclose(dset);
+        assert(status >= 0);
       }
       break;
     case 3:
@@ -125,8 +133,10 @@ void read_test
             for (istep = 0; istep < pconfig->steps; ++istep)
               {
                 sprintf(path, "step=%d", istep);
-                assert((dset = H5Dopen(file, path, dapl)) >= 0);
-                assert((fspace = H5Dget_space(dset)) >= 0);
+                dset = H5Dopen(file, path, dapl);
+                assert(dset >= 0);
+                fspace = H5Dget_space(dset);
+                assert(fspace >= 0);
 
                 for (iarray = 0; iarray < pconfig->arrays; ++iarray)
                   {
@@ -136,8 +146,9 @@ void read_test
                     *create_time += MPI_Wtime();
 
                     *read_time -= MPI_Wtime();
-                    assert(H5Dread(dset, H5T_NATIVE_DOUBLE, mspace, fspace,
-                                   dxpl, rbuf) >= 0);
+                    status = H5Dread(dset, H5T_NATIVE_DOUBLE, mspace, fspace,
+                                     dxpl, rbuf);
+                    assert(status >= 0);
                     *read_time += MPI_Wtime();
 
 #ifdef VERIFY_DATA
@@ -147,9 +158,10 @@ void read_test
 #endif
                   }
 
-                assert(H5Sclose(fspace) >= 0);
-                assert(H5Dclose(dset) >= 0);
-
+                status = H5Sclose(fspace);
+                assert(status >= 0);
+                status = H5Dclose(dset);
+                assert(status >= 0);
               }
           }
         else /* dataset per array */
@@ -159,20 +171,25 @@ void read_test
                 for (iarray = 0; iarray < pconfig->arrays; ++iarray)
                   {
                     sprintf(path, "array=%d", iarray);
-                    assert((dset = H5Dopen(file, path, dapl)) >= 0);
-                    assert((fspace = H5Dget_space(dset)) >= 0);
+                    dset = H5Dopen(file, path, dapl);
+                    assert(dset >= 0);
+                    fspace = H5Dget_space(dset);
+                    assert(fspace >= 0);
                     *create_time -= MPI_Wtime();
                     create_selection(pconfig, fspace, my_proc_row,
                                      my_proc_col, istep, iarray);
                     *create_time += MPI_Wtime();
 
                     *read_time -= MPI_Wtime();
-                    assert(H5Dread(dset, H5T_NATIVE_DOUBLE, mspace, fspace,
-                                   dxpl, rbuf) >= 0);
+                    status = H5Dread(dset, H5T_NATIVE_DOUBLE, mspace, fspace,
+                                     dxpl, rbuf);
+                    assert(status >= 0);
                     *read_time += MPI_Wtime();
 
-                    assert(H5Sclose(fspace) >= 0);
-                    assert(H5Dclose(dset) >= 0);
+                    status = H5Sclose(fspace);
+                    assert(status >= 0);
+                    status = H5Dclose(dset);
+                    assert(status >= 0);
 
 #ifdef VERIFY_DATA
                     d[0] = pconfig->arrays; d[1] = pconfig->steps;
@@ -196,21 +213,26 @@ void read_test
                         (step_first_flg ? istep : iarray),
                         (step_first_flg ? iarray : istep));
 
-                assert((dset = H5Dopen(file, path, dapl)) >= 0);
+                dset = H5Dopen(file, path, dapl);
+                assert(dset >= 0);
 
-                assert((fspace = H5Dget_space(dset)) >= 0);
+                fspace = H5Dget_space(dset);
+                assert(fspace >= 0);
                 *create_time -= MPI_Wtime();
                 create_selection(pconfig, fspace, my_proc_row, my_proc_col,
                                  istep, iarray);
                 *create_time += MPI_Wtime();
 
                 *read_time -= MPI_Wtime();
-                assert(H5Dread(dset, H5T_NATIVE_DOUBLE, mspace, fspace, dxpl,
-                               rbuf) >= 0);
+                status = H5Dread(dset, H5T_NATIVE_DOUBLE, mspace, fspace, dxpl,
+                                 rbuf);
+                assert(status >= 0);
                 *read_time += MPI_Wtime();
 
-                assert(H5Sclose(fspace) >= 0);
-                assert(H5Dclose(dset) >= 0);
+                status = H5Sclose(fspace);
+                assert(status >= 0);
+                status = H5Dclose(dset);
+                assert(status >= 0);
 
 #ifdef VERIFY_DATA
                 d[0] = step_first_flg ? pconfig->steps : pconfig->arrays;
@@ -227,7 +249,9 @@ void read_test
       break;
     }
 
-  assert(H5Fclose(file) >= 0);
-  assert(H5Sclose(mspace) >= 0);
+  status = H5Fclose(file);
+  assert(status >= 0);
+  status = H5Sclose(mspace);
+  assert(status >= 0);
   free(rbuf);
 }

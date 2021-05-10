@@ -14,6 +14,7 @@
 #include "write_test.h"
 
 #include "dataset.h"
+#include "config.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -47,6 +48,7 @@ hid_t write_test
   char path[255];
 
   hid_t file, dset, fspace;
+  herr_t status;
 
 #ifdef VERIFY_DATA
   /* Extent of the logical 4D array and partition origin/offset */
@@ -69,7 +71,8 @@ hid_t write_test
     dims[0] = (hsize_t)my_rows;
     dims[1] = (hsize_t)my_cols;
     mspace = H5Screate_simple(2, dims, dims);
-    assert(H5Sselect_all(mspace) >= 0);
+    status = H5Sselect_all(mspace);
+    assert(status >= 0);
   }
 
 #ifdef VERIFY_DATA
@@ -88,8 +91,8 @@ hid_t write_test
 #endif
 
   *create_time -= MPI_Wtime();
-  assert((file = H5Fcreate(pconfig->hdf5_file, H5F_ACC_TRUNC, fcpl, fapl))
-         >= 0);
+  file = H5Fcreate(pconfig->hdf5_file, H5F_ACC_TRUNC, fcpl, fapl);
+  assert(file >= 0);
   *create_time += MPI_Wtime();
 
   switch (pconfig->rank)
@@ -98,8 +101,8 @@ hid_t write_test
       {
         /* a single 4D array */
         *create_time -= MPI_Wtime();
-        assert((dset = create_dataset(pconfig, file, "dataset", lcpl, dapl))
-               >= 0);
+        dset = create_dataset(pconfig, file, "dataset", lcpl, dapl);
+        assert(dset >= 0);
         *create_time += MPI_Wtime();
 
         for (istep = 0; istep < pconfig->steps; ++istep)
@@ -113,21 +116,25 @@ hid_t write_test
                 o[1] = step_first_flg ? iarray : istep;
                 init_write_buffer(wbuf, &my_rows, &my_cols, d, o);
 #endif
-                assert((fspace = H5Dget_space(dset)) >= 0);
+                fspace = H5Dget_space(dset);
+                assert(fspace >= 0);
                 *create_time -= MPI_Wtime();
                 create_selection(pconfig, fspace, my_proc_row, my_proc_col,
                                  istep, iarray);
                 *create_time += MPI_Wtime();
 
                 *write_time -= MPI_Wtime();
-                assert(H5Dwrite(dset, H5T_NATIVE_DOUBLE, mspace, fspace,
-                                dxpl, wbuf) >= 0);
+                status = H5Dwrite(dset, H5T_NATIVE_DOUBLE, mspace, fspace,
+                                  dxpl, wbuf);
+                assert(status >= 0);
                 *write_time += MPI_Wtime();
-                assert(H5Sclose(fspace) >= 0);
+                status = H5Sclose(fspace);
+                assert(status >= 0);
               }
           }
 
-        assert(H5Dclose(dset) >= 0);
+        status = H5Dclose(dset);
+        assert(status >= 0);
       }
       break;
     case 3:
@@ -138,8 +145,8 @@ hid_t write_test
               {
                 *create_time -= MPI_Wtime();
                 sprintf(path, "step=%d", istep);
-                assert((dset = create_dataset(pconfig, file, path, lcpl, dapl))
-                       >= 0);
+                dset = create_dataset(pconfig, file, path, lcpl, dapl);
+                assert(dset >= 0);
                 *create_time += MPI_Wtime();
 
                 for (iarray = 0; iarray < pconfig->arrays; ++iarray)
@@ -149,20 +156,24 @@ hid_t write_test
                     o[0] = istep; o[1] = iarray;
                     init_write_buffer(wbuf, &my_rows, &my_cols, d, o);
 #endif
-                    assert((fspace = H5Dget_space(dset)) >= 0);
+                    fspace = H5Dget_space(dset);
+                    assert(fspace >= 0);
                     *create_time -= MPI_Wtime();
                     create_selection(pconfig, fspace, my_proc_row,
                                      my_proc_col, istep, iarray);
                     *create_time += MPI_Wtime();
 
                     *write_time -= MPI_Wtime();
-                    assert(H5Dwrite(dset, H5T_NATIVE_DOUBLE, mspace, fspace,
-                                    dxpl, wbuf) >= 0);
+                    status = H5Dwrite(dset, H5T_NATIVE_DOUBLE, mspace, fspace,
+                                      dxpl, wbuf);
+                    assert(status >= 0);
                     *write_time += MPI_Wtime();
-                    assert(H5Sclose(fspace) >= 0);
+                    status = H5Sclose(fspace);
+                    assert(status >= 0);
                   }
 
-                assert(H5Dclose(dset) >= 0);
+                status = H5Dclose(dset);
+                assert(status >= 0);
               }
           }
         else /* dataset per array */
@@ -173,11 +184,13 @@ hid_t write_test
                   {
                     sprintf(path, "array=%d", iarray);
                     *create_time -= MPI_Wtime();
-                    if (istep > 0)
-                      assert((dset = H5Dopen(file, path, dapl)) >= 0);
-                    else
-                      assert((dset = create_dataset(pconfig, file, path,
-                                                    lcpl, dapl)) >= 0);
+                    if (istep > 0) {
+                      dset = H5Dopen(file, path, dapl);
+                    }
+                    else {
+                      dset = create_dataset(pconfig, file, path, lcpl, dapl);
+                    }
+                    assert(dset >= 0);
                     *create_time += MPI_Wtime();
 
 #ifdef VERIFY_DATA
@@ -185,18 +198,22 @@ hid_t write_test
                     o[0] = iarray; o[1] = istep;
                     init_write_buffer(wbuf, &my_rows, &my_cols, d, o);
 #endif
-                    assert((fspace = H5Dget_space(dset)) >= 0);
+                    fspace = H5Dget_space(dset);
+                    assert(fspace >= 0);
                     *create_time -= MPI_Wtime();
                     create_selection(pconfig, fspace, my_proc_row,
                                      my_proc_col, istep, iarray);
                     *create_time += MPI_Wtime();
 
                     *write_time -= MPI_Wtime();
-                    assert(H5Dwrite(dset, H5T_NATIVE_DOUBLE, mspace, fspace,
-                                    dxpl, wbuf) >= 0);
+                    status = H5Dwrite(dset, H5T_NATIVE_DOUBLE, mspace, fspace,
+                                      dxpl, wbuf);
+                    assert(status >= 0);
                     *write_time += MPI_Wtime();
-                    assert(H5Sclose(fspace) >= 0);
-                    assert(H5Dclose(dset) >= 0);
+                    status = H5Sclose(fspace);
+                    assert(status >= 0);
+                    status = H5Dclose(dset);
+                    assert(status >= 0);
                   }
               }
           }
@@ -214,8 +231,8 @@ hid_t write_test
                                "step=%d/array=%d" : "array=%d/step=%d"),
                         (step_first_flg ? istep : iarray),
                         (step_first_flg ? iarray : istep));
-                assert((dset = create_dataset(pconfig, file, path,
-                                              lcpl, dapl)) >= 0);
+                dset = create_dataset(pconfig, file, path, lcpl, dapl);
+                assert(dset >= 0);
                 *create_time += MPI_Wtime();
 
 #ifdef VERIFY_DATA
@@ -226,18 +243,22 @@ hid_t write_test
                 init_write_buffer(wbuf, &my_rows, &my_cols, d, o);
 #endif
 
-                assert((fspace = H5Dget_space(dset)) >= 0);
+                fspace = H5Dget_space(dset);
+                assert(fspace >= 0);
                 *create_time -= MPI_Wtime();
                 create_selection(pconfig, fspace, my_proc_row, my_proc_col,
                                  istep, iarray);
                 *create_time += MPI_Wtime();
 
                 *write_time -= MPI_Wtime();
-                assert(H5Dwrite(dset, H5T_NATIVE_DOUBLE, mspace, fspace,
-                                dxpl, wbuf) >= 0);
+                status = H5Dwrite(dset, H5T_NATIVE_DOUBLE, mspace, fspace,
+                                  dxpl, wbuf);
+                assert(status >= 0);
                 *write_time += MPI_Wtime();
-                assert(H5Sclose(fspace) >= 0);
-                H5Dclose(dset);
+                status = H5Sclose(fspace);
+                assert(status >= 0);
+                status = H5Dclose(dset);
+                assert(status >= 0);
               }
           }
       }
@@ -245,12 +266,15 @@ hid_t write_test
     default:
       break;
     }
+  
   /*
   *create_time -= MPI_Wtime();
   assert(H5Fclose(file) >= 0);
   *create_time += MPI_Wtime();
   */
-  assert(H5Sclose(mspace) >= 0);
+
+  status = H5Sclose(mspace);
+  assert(status >= 0);
   free(wbuf);
   return file;
 }

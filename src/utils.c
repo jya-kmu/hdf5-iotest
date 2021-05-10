@@ -42,15 +42,18 @@ void print_results
  )
 {
   hid_t file;
-  hsize_t fsize = 0;
+  herr_t status;
+  hsize_t fsize=0;
   unsigned majnum, minnum, relnum;
   char version[16];
-  assert(H5get_libversion(&majnum, &minnum, &relnum) >= 0);
+
+  status = H5get_libversion(&majnum, &minnum, &relnum);
+  assert(status >= 0);
   snprintf(version, 16, "\"%d.%d.%d\"", majnum, minnum, relnum);
 
-  //assert((file = H5Fopen(pconfig->hdf5_file, H5F_ACC_RDONLY, H5P_DEFAULT)) >= 0);
-  //assert(H5Fget_filesize(file, &fsize) >= 0);
-  //assert(H5Fclose(file) >= 0);
+//  assert((file = H5Fopen(pconfig->hdf5_file, H5F_ACC_RDONLY, H5P_DEFAULT)) >= 0);
+//  assert(H5Fget_filesize(file, &fsize) >= 0);
+//  assert(H5Fclose(file) >= 0);
 
   /* write summary to the console */
   printf("Wall clock [s]:\t\t%.2f\n", wall_time);
@@ -103,6 +106,8 @@ void print_current_config(configuration* pconfig)
         strncpy(io, "core", 16);
       else if (strncmp(pconfig->single_process, "mpi-io-uni", 16) == 0)
         strncpy(io, "mpi-io-uni", 16);
+      else if (strncmp(pconfig->single_process, "hermes", 16) == 0)
+        strncpy(io, "hermes", 16);
       else
         strncpy(io, "ufo-io", 16);
     }
@@ -160,7 +165,9 @@ herr_t set_libver_bounds(configuration* pconfig, int rank, hid_t fapl)
   herr_t result = 0;
   H5F_libver_t low = H5F_LIBVER_EARLIEST, high = H5F_LIBVER_LATEST;
   unsigned majnum, minnum, relnum;
-  assert((result = H5get_libversion(&majnum, &minnum, &relnum)) >= 0);
+
+  result = H5get_libversion(&majnum, &minnum, &relnum);
+  assert(result >= 0);
   assert (majnum == 1 && minnum >= 8 && minnum <= 13);
 
   if (strncmp(pconfig->libver_bound_low, "earliest", 16) != 0)
@@ -210,7 +217,8 @@ herr_t set_libver_bounds(configuration* pconfig, int rank, hid_t fapl)
     }
 
   assert(low <= high);
-  assert((result = H5Pset_libver_bounds(fapl, low, high)) >= 0);
+  result = H5Pset_libver_bounds(fapl, low, high);
+  assert(result >= 0);
 
   return result;
 }

@@ -50,6 +50,7 @@ int main(int argc, char* argv[])
   char* mpi_mod[2]       = { "independent", "collective" };
 
   hid_t fcpl, fapl, file, dapl, dxpl, lcpl;
+  herr_t status;
 
   double wall_time, create_time, write_phase, write_time, read_phase, read_time;
   timings ts;
@@ -101,22 +102,41 @@ int main(int argc, char* argv[])
   my_rows = strong_scaling_flg ? config.rows/config.proc_rows : config.rows;
   my_cols = strong_scaling_flg ? config.cols/config.proc_cols : config.cols;
 
-  assert((fcpl = H5Pcreate(H5P_FILE_CREATE)) >= 0);
-  assert((fapl = H5Pcreate(H5P_FILE_ACCESS)) >= 0);
-  assert((dapl = H5Pcreate(H5P_DATASET_ACCESS)) >= 0);
-  assert((dxpl = H5Pcreate(H5P_DATASET_XFER)) >= 0);
-  assert((lcpl = H5Pcreate(H5P_LINK_CREATE)) >= 0);
-  assert(H5Pset_create_intermediate_group(lcpl, 1) >= 0);
+  fcpl = H5Pcreate(H5P_FILE_CREATE);
+  assert(fcpl >= 0);
 
-  if (size > 1 || (strncmp(config.single_process, "mpi-io-uni", 16) == 0))
-    assert(H5Pset_fapl_mpio(fapl, MPI_COMM_WORLD, MPI_INFO_NULL) >= 0);
+  fapl = H5Pcreate(H5P_FILE_ACCESS);
+  assert(fapl >= 0);
+
+  dapl = H5Pcreate(H5P_DATASET_ACCESS);
+  assert(dapl >= 0);
+
+  dxpl = H5Pcreate(H5P_DATASET_XFER);
+  assert(dxpl >= 0);
+
+  lcpl = H5Pcreate(H5P_LINK_CREATE);
+  assert(lcpl >= 0);
+
+  status = H5Pset_create_intermediate_group(lcpl, 1);
+  assert(status >= 0);
+
+  if (size > 1 || (strncmp(config.single_process, "mpi-io-uni", 16) == 0)) {
+    status = H5Pset_fapl_mpio(fapl, MPI_COMM_WORLD, MPI_INFO_NULL);
+    assert(status >= 0);
+  }
   else
-    if (strncmp(config.single_process, "core", 16) == 0)
-      assert(H5Pset_fapl_core(fapl, 67108864, 1) >= 0); /* 64 MB increments */
-    if (strncmp(config.single_process, "hermes", 16) == 0)
-      assert(H5Pset_fapl_hermes(fapl) >= 0);
-    else
-      assert(H5Pset_fapl_sec2(fapl) >= 0);
+    if (strncmp(config.single_process, "core", 16) == 0) {
+      status = H5Pset_fapl_core(fapl, 67108864, 1); /* 64 MB increments */
+      assert(status >= 0);
+    }
+    if (strncmp(config.single_process, "hermes", 16) == 0) {
+      status = H5Pset_fapl_hermes(fapl, false, 1048576);
+      assert(status >= 0);
+    }
+    else {
+      status = H5Pset_fapl_sec2(fapl);
+      assert(status >= 0);
+    }
 
   /* use a macro to stop the indentation madness */
 
@@ -162,8 +182,9 @@ int main(int argc, char* argv[])
         }
     }
 
-  assert(H5Pset_alignment(fapl, config.alignment_threshold,
-                          config.alignment_increment) >= 0);
+  status = H5Pset_alignment(fapl, config.alignment_threshold,
+                            config.alignment_increment);
+  assert(status >= 0);
 
   /* ======================================================================== */
   /* meta block size */
@@ -181,14 +202,16 @@ int main(int argc, char* argv[])
           config.meta_block_size = mblk_size[1];
     }
 
-  assert(H5Pset_meta_block_size(fapl, config.meta_block_size) >= 0);
+  status = H5Pset_meta_block_size(fapl, config.meta_block_size);
+  assert(status >= 0);
 
   /* ======================================================================== */
   /* lower libver bound */
   TEST_FOR (ifmt = 0, ifmt <= 1, ++ifmt);
   strncpy(config.libver_bound_low, fmt_low[ifmt],
           sizeof(config.libver_bound_low));
-  assert(set_libver_bounds(&config, rank, fapl) >= 0);
+  status = set_libver_bounds(&config, rank, fapl);
+  assert(status >= 0);
 
   /* ======================================================================== */
   /* MPI-IO mode */
@@ -197,10 +220,14 @@ int main(int argc, char* argv[])
     {
       strncpy(config.mpi_io, mpi_mod[imod], sizeof(config.mpi_io)-1);
       coll_mpi_io_flg = (strncmp(config.mpi_io, "collective", 15) == 0);
-      if (coll_mpi_io_flg)
-        assert(H5Pset_dxpl_mpio(dxpl, H5FD_MPIO_COLLECTIVE) >= 0);
-      else
-        assert(H5Pset_dxpl_mpio(dxpl, H5FD_MPIO_INDEPENDENT) >= 0);
+      if (coll_mpi_io_flg) {
+        status = H5Pset_dxpl_mpio(dxpl, H5FD_MPIO_COLLECTIVE);
+        assert(status >= 0);
+      }
+      else {
+        status = H5Pset_dxpl_mpio(dxpl, H5FD_MPIO_INDEPENDENT);
+        assert(status >= 0);
+      }
     }
   else
     {
@@ -255,11 +282,16 @@ int main(int argc, char* argv[])
   END_TEST /* slow dim. */
   END_TEST /* rank */
 
-  assert(H5Pclose(lcpl) >= 0);
-  assert(H5Pclose(dxpl) >= 0);
-  assert(H5Pclose(dapl) >= 0);
-  assert(H5Pclose(fapl) >= 0);
-  assert(H5Pclose(fcpl) >= 0);
+  status = H5Pclose(lcpl);
+  assert(status >= 0);
+  status = H5Pclose(dxpl);
+  assert(status >= 0);
+  status = H5Pclose(dapl);
+  assert(status >= 0);
+  status = H5Pclose(fapl);
+  assert(status >= 0);
+  status = H5Pclose(fcpl);
+  assert(status >= 0);
 
   MPI_Finalize();
 
