@@ -21,7 +21,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-hid_t write_test
+void write_test
 (
  configuration* pconfig,
  int size,
@@ -266,15 +266,12 @@ hid_t write_test
     default:
       break;
     }
-  
-  /*
+
   *create_time -= MPI_Wtime();
   assert(H5Fclose(file) >= 0);
   *create_time += MPI_Wtime();
-  */
 
   status = H5Sclose(mspace);
   assert(status >= 0);
   free(wbuf);
-  return file;
 }

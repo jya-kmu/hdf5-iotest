@@ -49,7 +49,7 @@ int main(int argc, char* argv[])
   char* fmt_low[2]       = { "earliest", "latest" };
   char* mpi_mod[2]       = { "independent", "collective" };
 
-  hid_t fcpl, fapl, file, dapl, dxpl, lcpl;
+  hid_t fcpl, fapl, dapl, dxpl, lcpl;
   herr_t status;
 
   double wall_time, create_time, write_phase, write_time, read_phase, read_time;
@@ -130,7 +130,7 @@ int main(int argc, char* argv[])
       assert(status >= 0);
     }
     if (strncmp(config.single_process, "hermes", 16) == 0) {
-      status = H5Pset_fapl_hermes(fapl, false, 1048576);
+      status = H5Pset_fapl_hermes(fapl, true, 1048576);
       assert(status >= 0);
     }
     else {
@@ -248,8 +248,7 @@ int main(int argc, char* argv[])
   wall_time = -MPI_Wtime();
   read_time = write_time = create_time = 0.0;
 
-  write_phase = -MPI_Wtime();
-  file = write_test(&config, size, rank, my_proc_row, my_proc_col, my_rows, my_cols,
+  write_test(&config, size, rank, my_proc_row, my_proc_col, my_rows, my_cols,
              fcpl, fapl, lcpl, dapl, dxpl,
              &create_time, &write_time);
   write_phase += MPI_Wtime();
@@ -258,7 +257,7 @@ int main(int argc, char* argv[])
 
   read_phase = -MPI_Wtime();
   read_test(&config, size, rank, my_proc_row, my_proc_col, my_rows, my_cols,
-            file, dapl, dxpl,
+            fapl, dapl, dxpl,
             &create_time, &read_time);
   read_phase += MPI_Wtime();
 
