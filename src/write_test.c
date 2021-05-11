@@ -268,7 +268,8 @@ void write_test
     }
 
   *create_time -= MPI_Wtime();
-  assert(H5Fclose(file) >= 0);
+  status = H5Fclose(file);
+  assert(status >= 0);
   *create_time += MPI_Wtime();
 
   status = H5Sclose(mspace);
