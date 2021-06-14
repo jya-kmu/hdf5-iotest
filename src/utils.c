@@ -55,7 +55,6 @@ void print_results
   assert(status >= 0);
   snprintf(version, 16, "\"%d.%d.%d\"", majnum, minnum, relnum);
 
-#if 0
   if( pconfig->split == 1)
     {
       /* H5Fget_filesize does not work with split FD */
@@ -88,7 +87,6 @@ void print_results
      // assert(H5Fget_filesize(file, &fsize) >= 0);
      // assert(H5Fclose(file) >= 0);
     }
-#endif
 
   /* write summary to the console */
   printf("Wall clock  [s]:\t\t%.2f\n", wall_time);
