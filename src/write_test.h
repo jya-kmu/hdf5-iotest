@@ -20,6 +20,7 @@
 extern void write_test
 (
  configuration* pconfig,
+ char * hdf5_filename,
  int size,
  int rank,
  int my_proc_row,
@@ -31,6 +32,7 @@ extern void write_test
  hid_t lcpl,
  hid_t dapl,
  hid_t dxpl,
+ unsigned int coll_mpi_io_flg,
  double* create_time,
  double* write_time
  );

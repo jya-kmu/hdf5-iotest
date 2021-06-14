@@ -7,7 +7,7 @@
 
 * Description
 
-This is a simple I/O performance tester for HDF5.  (See also [[https://github.com/ornladios/ADIOS2/tree/master/source/utils/adios_iotest][ADIOS IOTEST]].) It's
+This is a simple I/O performance tester for HDF5.  (See also [[https://github.com/ornladios/ADIOS2/tree/master/source/utils/adios_iotest][ADIOS IOTEST]].) Its
 purpose is to assess the /performance variability/ of a set of logically
 equivalent HDF5 representations of a common pattern. The test repeatedly writes
 (and reads) in parallel a set of 2D array variables in a tiled fashion, over a
@@ -54,7 +54,7 @@ stop
 A configuration file (see below) is used to control parameters such as the
 number of steps, the count and shape of the 2D array variables, etc. (See
 section [[sec:parameters]].) The test then uses between 48 and 192 different
-combinations of up to 7 internal parameter (see section [[sec:internal-parameters]])
+combinations of up to 7 internal parameters (see section [[sec:internal-parameters]])
 to configure the HDF5 library and output, to perform write and read operations,
 and to report certain timings. (The number of combinations is different for
 sequential and parallel runs, and depends on other choices.)
@@ -67,7 +67,7 @@ is the proverbial "getting off on the wrong foot."
 
 * Installation
 
-While it can be build manually, we recommend building =hdf5_iotest= from [[https://computing.llnl.gov/projects/spack-hpc-package-manager][Spack]].
+While it can be built manually, we recommend building =hdf5_iotest= from [[https://computing.llnl.gov/projects/spack-hpc-package-manager][Spack]].
 
 1. Create a new Spack package
    #+begin_src sh
@@ -140,7 +140,7 @@ make install
 
 =hdf5_iotest= accepts a single argument, the name of a configuration file. If no
 configuration file name is provided, it looks for a configuration named
-=hdf5-iotest.ini= in the current working directory.
+=hdf5_iotest.ini= in the current working directory.
 
 #+begin_src sh
 hdf5_iotest [INI file]
@@ -241,7 +241,7 @@ The following configuration parameters are supported.
     alignment-increment = 1
     #+end_src
 
-  By default there are no alignment restrictions in effect, and only
+  By default, there are no alignment restrictions in effect, and only
   increments greater than 1 have any effect.
 
 - Alignment Threshold :: The minimum object size (in bytes) for which alignment
@@ -280,16 +280,56 @@ The following configuration parameters are supported.
 
 - HDF5 Output File Name :: The default HDF5 output file name is
      =hdf5_iotest.h5=. Use this parameter to select a different name.
+     *Note*: The character "#" in the filename is reserved for creating an HDF5 
+     with the "#" replaced with the accumulated case number, for example *hdf5_iotest.#.h5*.
     #+begin_src conf-unix :noweb-ref hdf5-iotest-conf
- hdf5-file = hdf5_iotest.h5
+    hdf5-file = hdf5_iotest.h5
     #+end_src
 
-- Results File :: When running HDF5 I/O test, certain metrics are printed to
+- Results File :: When running the HDF5 I/O test, certain metrics are printed to
                   =stdout=. To simplify the analysis of results from multiple
                   runs, they are also written to a CSV file whose name is
                   configurable.
     #+begin_src conf-unix :noweb-ref hdf5-iotest-conf
  csv-file = hdf5_iotest.csv
+    #+end_src
+
+- Restart :: The simulations will resume from (and including) the last successful
+             entry in the result's CSV file. A value of 1 indicates a restart run,
+             and 0 is no restart. If the keyword is not present, the default is 
+             not a restart.
+    #+begin_src conf-unix :noweb-ref hdf5-iotest-conf
+    # [0, 1]
+    restart = 1
+    #+end_src
+
+- Split :: The split I/O driver will be used [1]. Zero indicates to not use
+    the split file diriver, default.
+    #+begin_src conf-unix :noweb-ref hdf5-iotest-conf
+    # [0, 1]
+    split = 1
+    #+end_src
+
+- One-case :: The simulation will run only one case in the parameter space.
+    A value not equal to 0 indicates which parameter case to run, and the
+    value is a cumulative counter of the nested loops over the parameter space.
+    For example, to rerun the 100th case in the CSV file, the value would be 100.
+    If the keyword is not present, the default is to do all the cases.
+
+    #+begin_src conf-unix :noweb-ref hdf5-iotest-conf
+    # case number in the parameter space to run.
+    one-case = 100
+    #+end_src
+
+- Compression ::  Specifies the compression filter for chunked datasets and
+    currently supports /gzip/ and /szip/. The value corresponds to
+    parameters in the corresponding HDF5 API. Valid parameters for "/gzip/" is an
+    integer for the /level/ (see H5Pset_deflate). For "/szip/" value is
+    /options_mask/, and /pixels_per_block/ (see H5Pset_szip).
+
+    #+begin_src conf-unix :noweb-ref hdf5-iotest-conf
+    # compression filter (gzip, szip).
+    szip = H5_SZIP_NN_OPTION_MASK, 8
     #+end_src
 
 * Internal Parameters<<sec:internal-parameters>>
@@ -305,7 +345,7 @@ Currently, the I/O test varies the following parameters:
 - Storage Layout :: The dataset storage layout in the HDF5 file can be chunked
   or contiguous (or compact or virtual or user-defined).
 - Alignment :: HDF5 objects greater than or equal to an alignment threshold can
-  be aligned on addresses which are a multiple of a certain increment.
+  be aligned on addresses that are a multiple of a certain increment.
 - Lower Library Version Bound  :: The HDF5 library can be configured to use the
   earliest or latest available file format micro-versions when generating
   objects.

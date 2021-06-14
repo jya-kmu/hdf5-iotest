@@ -13,6 +13,7 @@
 
 #include "utils.h"
 
+#include <stdlib.h>
 #include <assert.h>
 #include <string.h>
 
@@ -37,6 +38,7 @@ void create_output_file(const char* fname)
 void print_results
 (
  configuration* pconfig,
+ char*          hdf5_filename,
  double         wall_time,
  timings*       pts
  )
@@ -44,6 +46,8 @@ void print_results
   hid_t file;
   herr_t status;
   hsize_t fsize=0;
+  hsize_t fsize_units;
+
   unsigned majnum, minnum, relnum;
   char version[16];
 
@@ -51,25 +55,67 @@ void print_results
   assert(status >= 0);
   snprintf(version, 16, "\"%d.%d.%d\"", majnum, minnum, relnum);
 
-//  assert((file = H5Fopen(pconfig->hdf5_file, H5F_ACC_RDONLY, H5P_DEFAULT)) >= 0);
-//  assert(H5Fget_filesize(file, &fsize) >= 0);
-//  assert(H5Fclose(file) >= 0);
+#if 0
+  if( pconfig->split == 1)
+    {
+      /* H5Fget_filesize does not work with split FD */
+      char command[ PATH_MAX + 80 ];
+      FILE *fpipe;
+      char digit = 0;
+      char digits[18];
+      strcpy(command, "du -apparent-size -cb ");
+      strcat(command, hdf5_filename);
+      strcat(command, "*.h5 | tail -1 | sed 's/[^0-9]//g'");
+
+      if (0 == (fpipe = (FILE*)popen(command, "r")))
+        {
+          perror("popen() failed.");
+          exit(EXIT_FAILURE);
+        }
+      int i = 0;
+      while (fread(&digit, sizeof(digit), 1, fpipe))
+        {
+          digits[i] = digit;
+          i++;
+        }
+      pclose(fpipe);
+      fsize = atoi(digits);
+
+    }
+  else 
+    {
+     // assert((file = H5Fopen(hdf5_filename, H5F_ACC_RDONLY, H5P_DEFAULT)) >= 0);
+     // assert(H5Fget_filesize(file, &fsize) >= 0);
+     // assert(H5Fclose(file) >= 0);
+    }
+#endif
 
   /* write summary to the console */
-  printf("Wall clock [s]:\t\t%.2f\n", wall_time);
-  printf("File size [B]:\t\t%.0f\n", (double)fsize);
+  printf("Wall clock  [s]:\t\t%.2f\n", wall_time);
+
+  static const char *UNIT[] = { "B", "kiB", "MiB", "GiB", "TiB", "PiB", "EiB" };
+  hsize_t cnt = 0;
+  hsize_t rem = 0;
+  fsize_units=fsize;
+  while (fsize_units >= 1024 && cnt < (sizeof(UNIT) / sizeof(*UNIT))) {
+    rem = fsize_units % 1024;
+    fsize_units /= 1024;
+    cnt++;
+  }
+  printf("File size [%s]:\t\t%.1f\n", UNIT[cnt], (float)fsize_units + (float)rem / 1024.0);
 
   { /* write results to the CSV file */
     FILE *fptr = fopen(pconfig->csv_file, "a");
     assert(fptr != NULL);
     fprintf(fptr, "%d,%d,%ld,%ld,%s,%d,%d,%s,%d,%s,%llu,%llu,%llu,%s,%s,%s,%s,"
-            "%.2f,%.0f,%.2f,%.2f,%.2f,%.2f,"
-            "%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n",
+            "%.4f,%.0f,%.4f,%.4f,%.4f,%.4f,"
+            "%.4f,%.4f,%.4f,%.4f,%.4f,%.4f\n",
             pconfig->steps, pconfig->arrays, pconfig->rows, pconfig->cols,
             pconfig->scaling, pconfig->proc_rows, pconfig->proc_cols,
             pconfig->slowest_dimension, pconfig->rank, version,
-            pconfig->alignment_increment, pconfig->alignment_threshold,
-	    pconfig->meta_block_size,
+            (unsigned long long)pconfig->alignment_increment,
+            (unsigned long long)pconfig->alignment_threshold,
+	    (unsigned long long)pconfig->meta_block_size,
             pconfig->layout, pconfig->fill_values, pconfig->libver_bound_low,
             pconfig->mpi_io, wall_time, (double)fsize,
             pts->min_write_phase, pts->max_write_phase,
@@ -117,8 +163,9 @@ void print_current_config(configuration* pconfig)
          pconfig->slowest_dimension, pconfig->rank,
          strncmp(pconfig->layout, "contiguous", 16) == 0 ? "cont" : "chkd",
          pconfig->fill_values,
-         pconfig->alignment_increment, pconfig->alignment_threshold,
-	 pconfig->meta_block_size,
+         (unsigned long long)pconfig->alignment_increment,
+         (unsigned long long)pconfig->alignment_threshold,
+	 (unsigned long long)pconfig->meta_block_size,
          pconfig->libver_bound_low, io);
 }
 
@@ -221,4 +268,100 @@ herr_t set_libver_bounds(configuration* pconfig, int rank, hid_t fapl)
   assert(result >= 0);
 
   return result;
+}
+
+/*
+ *
+ * Restart from last fully completed configuration
+ *
+ */
+
+void restart(
+             restart_t *ckpt, 
+             const char* fname,
+             char* slow_dim[],
+             char* fill[],
+             char* layout[],
+             char* fmt_low[],
+             char* mpi_mod[],
+             hsize_t mblk_size[],
+             hsize_t align_incr[]
+)
+{
+  FILE *fptr;                         /* File pointer */
+  static const long max_len = 200+ 1; /* define the max length of the line to read */
+  char buf[max_len + 1];              /* define the buffer and allocate the length */
+
+  if ((fptr = fopen(fname, "rb")) != NULL)
+    {
+      fseek(fptr, -max_len, SEEK_END); /* set pointer to the end of file minus a length. There can be more than one new line character */
+      fread(buf, max_len-1, 1, fptr);  /* read the contents of the file from the fseek() position */
+      fclose(fptr);                    /* close the file */
+      
+      buf[max_len-1] = '\0';           /* reset the string */
+      char *last_newline = strrchr(buf, '\n'); /* find last occurrence of newline */
+      char *last_line = last_newline+1;        /* jump to it */
+      
+      printf("RESTARTING FROM LAST LINE: [%s]\n", last_line);
+
+      if( strstr(last_line, slow_dim[1]) != NULL) {
+        ckpt->islow = 1;
+      } else {
+        ckpt->islow = 0;
+      } 
+      if( strstr(last_line, layout[1]) != NULL) {
+        ckpt->ilay = 1;
+      } else {
+        ckpt->ilay = 0;
+      } 
+      if( strstr(last_line, fill[1]) != NULL) {
+        ckpt->ifill = 1;
+      } else {
+        ckpt->ifill = 0;
+      } 
+      if( strstr(last_line, fmt_low[1]) != NULL) {
+        ckpt->ifmt = 1;
+      } else {
+        ckpt->ifmt = 0;
+      } 
+      if( strstr(last_line, mpi_mod[1]) != NULL) {
+        ckpt->imod = 1;
+      } else {
+        ckpt->imod = 0;
+      }
+
+      char delim[] = ",";
+      char *ptr = strtok(last_line,delim);
+      
+      int icnt = 0;
+      while(ptr != NULL)
+        {
+          if(icnt == 8) {
+            ckpt->irank = atoi(ptr);
+          } else if(icnt == 10) {
+            if( (hsize_t)atoi(ptr) != align_incr[0]) {
+              ckpt->ialig = 1;
+            } else {
+              ckpt->ialig = 0;
+            }
+          } else if(icnt == 12) {
+            if( (hsize_t)atoi(ptr) == mblk_size[0] ) {
+              ckpt->imblk = 0;
+            } else {
+              ckpt->imblk = 1;
+            }
+          }
+          icnt++;
+          ptr = strtok(NULL, delim);
+        }
+    }
+
+  /* Repeating the last successful configuration,
+     so remove the last line to avoid duplicate lines */
+  int len = strlen(fname);
+  char command[ len + 12];
+  strcpy(command, "sed -i '$d' ");
+  strcat(command, fname);
+  system(command);
+  
 }

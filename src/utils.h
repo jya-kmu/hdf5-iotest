@@ -32,6 +32,18 @@ typedef struct
   double max_read_time;
 } timings;
 
+typedef struct
+{
+  unsigned int irank;
+  unsigned int islow;
+  unsigned int ifill;
+  unsigned int ilay;
+  unsigned int ialig;
+  unsigned int imblk;
+  unsigned int ifmt;
+  unsigned int imod;
+} restart_t;
+
 void create_output_file(const char* fname);
 
 void print_initial_config(const char* ini, configuration* pconfig);
@@ -50,11 +62,24 @@ void get_timings
 
 void print_results
 (
- configuration* pconfig,
+ configuration* pconfig, 
+ char*          hdf5_filename,
  double         wall_time,
  timings*       pts
  );
 
 herr_t set_libver_bounds(configuration* config, int rank, hid_t fapl);
+
+void restart(
+             restart_t *ckpt, 
+             const char* fname,
+             char* slow_dim[],
+             char* fill[],
+             char* layout[],
+             char* fmt_low[],
+             char* mpi_mod[],
+             hsize_t mblk_size[],
+             hsize_t align_incr[]
+);
 
 #endif

@@ -23,7 +23,7 @@
  *
  */
 
-hid_t create_dcpl(const configuration* config)
+hid_t create_dcpl(const configuration* config, unsigned int coll_mpi_io_flg)
 {
   hid_t result;
   herr_t status;
@@ -78,6 +78,20 @@ hid_t create_dcpl(const configuration* config)
 
       status = H5Pset_chunk(result, config->rank, cdims);
       assert(status >= 0);
+
+      /* apply compression:
+       * parallel compression only works for collective
+       */
+      if( config->proc_rows*config->proc_cols == 1  ||  coll_mpi_io_flg == 1) {
+        if (strncmp(config->compress_type, "gzip", 16) == 0) {
+          status = H5Pset_deflate(result, config->compress_par[0]);
+          assert(status >= 0);
+        } else if (strncmp(config->compress_type, "szip", 16) == 0) {
+          status = H5Pset_szip(result, config->compress_par[0], config->compress_par[1]);
+          assert(status >= 0);
+        }
+      }
+
     }
   else {
     status = H5Pset_layout(result, H5D_CONTIGUOUS);
@@ -170,12 +184,12 @@ static hid_t create_fspace(const configuration* config)
  */
 
 hid_t create_dataset(const configuration* config, hid_t file, const char* name,
-                     hid_t lcpl, hid_t dapl)
+                     hid_t lcpl, hid_t dapl, unsigned int coll_mpi_io_flg)
 {
   hid_t result, fspace, dcpl;
   herr_t status;
 
-  dcpl = create_dcpl(config);
+  dcpl = create_dcpl(config, coll_mpi_io_flg);
   assert(dcpl >= 0);
 
   fspace = create_fspace(config);
