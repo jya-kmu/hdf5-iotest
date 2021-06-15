@@ -87,7 +87,7 @@ int main(int argc, char* argv[])
         }
       if (config.csv_file[0] == '\0')
         {
-        //  uuid_generate_time_safe(uuid);
+          uuid_generate_time_safe(uuid);
           uuid_unparse_lower(uuid, config.csv_file);
           config.csv_file[36] = '.';
           config.csv_file[37] = 'c';
