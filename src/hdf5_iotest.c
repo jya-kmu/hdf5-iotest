@@ -271,7 +271,7 @@ int main(int argc, char* argv[])
 
   /* ======================================================================== */
   /* MPI-IO mode */
-  TEST_FOR (imod = 0, imod <= 1, ++imod);
+  TEST_FOR (imod = 0, imod <= 0, ++imod);
   ++icase;
   
   if(config.one_case > 0 && config.one_case != icase) goto skip;
@@ -318,7 +318,14 @@ int main(int argc, char* argv[])
     {
       fapl_split = H5Pcreate(H5P_FILE_ACCESS);
       assert(fapl_split >= 0);
-      status = H5Pset_fapl_split(fapl_split, "-m.h5", fapl, "-r.h5", fapl);
+      if (strncmp(config.single_process, "hermes", 16) == 0) {
+          hid_t fapl_m = H5Pcreate(H5P_FILE_ACCESS);
+          status = H5Pset_fapl_hermes(fapl_m, true, 4096);
+          assert(status >= 0);
+          status = H5Pset_fapl_split(fapl_split, "-m.h5", fapl_m, "-r.h5", fapl);
+      }
+      else
+          status = H5Pset_fapl_split(fapl_split, "-m.h5", fapl, "-r.h5", fapl);
       assert(status >= 0);
       fapl_cpy = fapl;
       fapl = fapl_split;
