@@ -17,7 +17,7 @@
 #include "configuration.h"
 #include "hdf5.h"
 
-extern void write_test
+extern hid_t write_test
 (
  configuration* pconfig,
  char * hdf5_filename,

@@ -31,7 +31,7 @@ void read_test
  int my_proc_col,
  unsigned long my_rows,
  unsigned long my_cols,
- hid_t fapl,
+ hid_t file,
  hid_t dapl,
  hid_t dxpl,
  double* create_time,
@@ -46,7 +46,7 @@ void read_test
 
   char path[255];
 
-  hid_t file, dset, fspace;
+  hid_t dset, fspace;
 
 #ifdef VERIFY_DATA
   /* Extent of the logical 4D array and partition origin/offset */
@@ -85,8 +85,8 @@ void read_test
   printf("\nWARNING: Data verification enabled. Timings will be distorted!!!\n");
 #endif
 
-  file = H5Fopen(hdf5_filename, H5F_ACC_RDONLY, fapl);
-  assert(file >= 0);
+  //file = H5Fopen(hdf5_filename, H5F_ACC_RDONLY, fapl);
+  //assert(file >= 0);
 
   switch (pconfig->rank)
     {

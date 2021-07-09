@@ -21,7 +21,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-void write_test
+hid_t write_test
 (
  configuration* pconfig,
  char * hdf5_filename,
@@ -295,12 +295,13 @@ void write_test
       break;
     }
 
-  *create_time -= MPI_Wtime();
-  status = H5Fclose(file);
-  assert(status >= 0);
-  *create_time += MPI_Wtime();
+  //*create_time -= MPI_Wtime();
+  //status = H5Fclose(file);
+  //assert(status >= 0);
+  //*create_time += MPI_Wtime();
 
   status = H5Sclose(mspace);
   assert(status >= 0);
   free(wbuf);
+  return file;
 }

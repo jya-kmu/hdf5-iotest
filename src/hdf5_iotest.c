@@ -52,13 +52,19 @@ int main(int argc, char* argv[])
   char* fmt_low[2]       = { "earliest", "latest" };
   char* mpi_mod[2]       = { "independent", "collective" };
 
-  hid_t fcpl, fapl, dapl, dxpl, lcpl, fapl_cpy, fapl_split;
+  hid_t fcpl, fapl, file, dapl, dxpl, lcpl, fapl_cpy, fapl_split;
   herr_t status;
 
   double wall_time, create_time, write_phase, write_time, read_phase, read_time;
   timings ts;
   int icase = 0;
 
+  struct timeval  start_time;
+  struct timeval  end;
+  long long elapsed;
+  double total_time;
+
+  gettimeofday(&start_time, 0);
 
   MPI_Init(&argc, &argv);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
@@ -166,7 +172,7 @@ int main(int argc, char* argv[])
       assert(status >= 0);
     }
     if (strncmp(config.single_process, "hermes", 16) == 0) {
-      status = H5Pset_fapl_hermes(fapl, true, 1048576);
+      status = H5Pset_fapl_hermes(fapl, false, 1048576);
       assert(status >= 0);
     }
     else {
@@ -320,7 +326,7 @@ int main(int argc, char* argv[])
       assert(fapl_split >= 0);
       if (strncmp(config.single_process, "hermes", 16) == 0) {
           hid_t fapl_m = H5Pcreate(H5P_FILE_ACCESS);
-          status = H5Pset_fapl_hermes(fapl_m, true, 4096);
+          status = H5Pset_fapl_hermes(fapl_m, false, 4096);
           assert(status >= 0);
           status = H5Pset_fapl_split(fapl_split, "-m.h5", fapl_m, "-r.h5", fapl);
       }
@@ -357,7 +363,7 @@ int main(int argc, char* argv[])
   read_time = write_time = create_time = 0.0;
 
   write_phase = -MPI_Wtime();
-  write_test(&config, hdf5_filename, size, rank, my_proc_row, my_proc_col, my_rows, my_cols,
+  file = write_test(&config, hdf5_filename, size, rank, my_proc_row, my_proc_col, my_rows, my_cols,
              fcpl, fapl, lcpl, dapl, dxpl, coll_mpi_io_flg,
              &create_time, &write_time);
   write_phase += MPI_Wtime();
@@ -366,7 +372,7 @@ int main(int argc, char* argv[])
 
   read_phase = -MPI_Wtime();
   read_test(&config, hdf5_filename, size, rank, my_proc_row, my_proc_col, my_rows, my_cols,
-            fapl, dapl, dxpl,
+            file, dapl, dxpl,
             &create_time, &read_time);
 
   read_phase += MPI_Wtime();
@@ -426,6 +432,11 @@ int main(int argc, char* argv[])
   assert(status >= 0);
 
   MPI_Finalize();
+
+  gettimeofday(&end, 0);
+  elapsed = (end.tv_sec-start_time.tv_sec)*1000000LL + end.tv_usec-start_time.tv_usec;
+  total_time = elapsed / 1000000.0;
+  printf("Total execution time: %.6f\n", total_time);
 
   return 0;
 }
