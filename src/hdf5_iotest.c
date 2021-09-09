@@ -326,7 +326,8 @@ int main(int argc, char* argv[])
       assert(fapl_split >= 0);
       if (strncmp(config.single_process, "hermes", 16) == 0) {
           hid_t fapl_m = H5Pcreate(H5P_FILE_ACCESS);
-          status = H5Pset_fapl_hermes(fapl_m, false, 4096);
+          //status = H5Pset_fapl_hermes(fapl_m, false, 4096);
+          status = H5Pset_fapl_core(fapl_m, (size_t)0, 0);
           assert(status >= 0);
           status = H5Pset_fapl_split(fapl_split, "-m.h5", fapl_m, "-r.h5", fapl);
       }
