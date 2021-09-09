@@ -58,6 +58,7 @@ int main(int argc, char* argv[])
   double wall_time, create_time, write_phase, write_time, read_phase, read_time;
   timings ts;
   int icase = 0;
+  int nmod = 0;
 
   struct timeval  start_time;
   struct timeval  end;
@@ -171,7 +172,7 @@ int main(int argc, char* argv[])
       status = H5Pset_fapl_core(fapl, 67108864, 1); /* 64 MB increments */
       assert(status >= 0);
     }
-    if (strncmp(config.single_process, "hermes", 16) == 0) {
+    else if (strncmp(config.single_process, "hermes", 16) == 0) {
       status = H5Pset_fapl_hermes(fapl, false, 1048576);
       assert(status >= 0);
     }
@@ -179,6 +180,9 @@ int main(int argc, char* argv[])
       status = H5Pset_fapl_sec2(fapl);
       assert(status >= 0);
     }
+
+  /* test collective and independent modes when parallel, and greater than 0 ranks */
+  if (size > 1) nmod = 1;
 
   char hdf5_filename[strlen(config.hdf5_file)+4];
 
@@ -277,7 +281,7 @@ int main(int argc, char* argv[])
 
   /* ======================================================================== */
   /* MPI-IO mode */
-  TEST_FOR (imod = 0, imod <= 0, ++imod);
+  TEST_FOR (imod = 0, imod <= nmod, ++imod);
   ++icase;
   
   if(config.one_case > 0 && config.one_case != icase) goto skip;
